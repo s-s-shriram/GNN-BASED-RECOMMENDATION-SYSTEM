@@ -1,0 +1,30 @@
+<h2>Movie Recommender</h2>
+
+<input id="search" placeholder="Search">
+
+<button onclick="load()">Recommend</button>
+
+<div id="movies"></div>
+<div id="searchResults"></div>
+
+<script>
+function load(){
+fetch('/recommend').then(r=>r.json()).then(d=>{
+let html="";
+d.forEach(m=>{
+html+=`<div><img src="${m.poster}" width=120><p>${m.title}</p></div>`;
+});
+document.getElementById("movies").innerHTML=html;
+});
+}
+
+document.getElementById("search").onkeyup=function(){
+fetch('/search?q='+this.value)
+.then(r=>r.json())
+.then(d=>{
+let h="";
+d.forEach(m=>h+=`<p>${m.title}</p>`);
+document.getElementById("searchResults").innerHTML=h;
+});
+}
+</script>

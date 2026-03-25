@@ -1,0 +1,8 @@
+flask
+flask-sqlalchemy
+torch
+pandas
+numpy
+requests
+torch-geometric
+gunicorn
