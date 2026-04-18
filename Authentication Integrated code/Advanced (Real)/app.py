@@ -20,8 +20,9 @@ from email.mime.text import MIMEText
 
 def send_email_otp(receiver_email, otp, purpose="verify"):
     
-    sender_email = "ssshriram1982@gmail.com"
-    app_password = "hxhf ztjv mzdn tjzs"
+    sender_email = "xxxxxxxxxxxx@gmail.com"  # Use the Sending Email address
+    app_password = "hqwr utrv mbdf tbvc"     # Use the same Email App password
+    
     # 🎯 Different content based on purpose
     if purpose == "reset":
         subject = "🔐 Password Reset OTP - Movie Recommender"
