@@ -1,5 +1,4 @@
-# This code execute real email sending and OTP verifying GNN model for Movie Recommender System
-
+# It generate fixed OTP on same screen and collect SignUp credential and used for log in
 import streamlit as st
 import pandas as pd
 import torch
@@ -18,59 +17,74 @@ if "logged_in" not in st.session_state:
 import smtplib
 from email.mime.text import MIMEText
 
-def send_email_otp(receiver_email, otp, purpose="verify"):
+def send_email_otp(receiver_email, otp, purpose="verify", username="User"):
     
-    sender_email = "xxxxxxxxxxxx@gmail.com"  # Use the Sending Email address
-    app_password = "hqwr utrv mbdf tbvc"     # Use the same Email App password
-    
-    # 🎯 Different content based on purpose
+    sender_email = "ssshriram1982@gmail.com"
+    app_password = "hxhf ztjv mzdn tjzs"
+
+    # 🔗 Fake verification link (you can later connect to backend)
+    verify_link = f"http://localhost:8501/?verify_email={receiver_email}&otp={otp}"
+
+    # 🎯 Different subject/content
     if purpose == "reset":
-        subject = "🔐 Password Reset OTP - Movie Recommender"
+        subject = "🔐 Reset Your Password | SSS MOVIE RS"
         title = "Password Reset Request"
         message = "You requested to reset your password."
     else:
-        subject = "🔐 Account Verification OTP - Movie Recommender"
-        title = "Account Verification"
-        message = "Thank you for registering with us."
-        
-    # 🎯 PROFESSIONAL EMAIL CONTENT
+        subject = "✅ Verify Your Email | SSS MOVIE RS"
+        title = "Welcome to SSS MOVIE RS 🎬"
+        message = "Thank you for signing up with us."
+
     body = f"""
     <html>
-    <body style="font-family: Arial, sans-serif;">
+    <body style="font-family: Arial; background-color:#f4f4f4; padding:20px;">
+    
+    <div style="max-width:600px; margin:auto; background:white; padding:20px; border-radius:10px;">
+    
+        <h2 style="color:#e50914; text-align:center;">🎬 SSS MOVIE RS</h2>
+        
+        <p>Hello <b>{username}</b>,</p>
 
-        <h2 style="color:#4CAF50;">🎬 S  S SHRIRAM Movie Recommendation System</h2>
+        <p>{message}</p>
 
-        <p>Hello,</p>
-
-        <p>Thank you for using our <b>SHRIRAM's Movie Recommendation System</b>.</p>
-
-        <p>Your One-Time Password (OTP) for verification is:</p>
+        <p style="font-size:16px;">Use the OTP below:</p>
 
         <h1 style="color:#ff4b4b; text-align:center;">{otp}</h1>
 
-        <p>This OTP is valid for a short time. Please do not share it with anyone.</p>
+        <p style="text-align:center;">OR</p>
 
-        <br>
+        <div style="text-align:center; margin:20px;">
+            <a href="{verify_link}" 
+               style="background:#4CAF50; color:white; padding:12px 20px; 
+                      text-decoration:none; border-radius:5px;">
+               ✅ Verify Email
+            </a>
+        </div>
 
-        <p>If you did not request this, please ignore this email.</p>
+        <p style="font-size:14px;">
+        This OTP is valid for a short time. Do not share it.
+        </p>
 
         <hr>
 
         <p style="font-size:12px; color:gray;">
-        This is an automated email. Please do not reply to s-s-shriram.
+        This is an automated email. Please do not reply.
         </p>
 
-        <p>Best Regards,<br>
-        <b>S.S.SHRIRAM</b><br>
-        <b>GNN Recommendation Team</b></p>
+        <p>
+        Regards,<br>
+        <b>S.S.SHRIRAM<b><br>
+        <b>SSS MOVIE RS Team</b>
+        </p>
 
+    </div>
     </body>
     </html>
     """
 
-    msg = MIMEText(body, "html")  # ✅ HTML email
-    msg["Subject"] = "🔐 OTP Verification - Movie Recommender"
-    msg["From"] = sender_email
+    msg = MIMEText(body, "html")
+    msg["Subject"] = subject
+    msg["From"] =f"SSS Movie Recommender Team <{sender_email}>"
     msg["To"] = receiver_email
 
     try:
@@ -410,19 +424,39 @@ USER_FILE = "users.csv"
 
 def load_users():
     try:
-        return pd.read_csv(USER_FILE)
-    except:
-        return pd.DataFrame(columns=["email", "password"])
+        df = pd.read_csv(USER_FILE)
 
-def save_user(email, password):
+        # ✅ Ensure required columns exist
+        required_cols = ["name", "email", "password"]
+        for col in required_cols:
+            if col not in df.columns:
+                df[col] = ""
+
+        return df
+
+    except:
+        # ✅ Create proper structure if file doesn't exist
+        return pd.DataFrame(columns=["name", "email", "password"])
+
+def save_user(name, email, password):
     df = load_users()
-    df = pd.concat([df, pd.DataFrame([{"email": email, "password": password}])])
+
+    new_user = pd.DataFrame([{
+        "name": name,
+        "email": email,
+        "password": password
+    }])
+
+    df = pd.concat([df, new_user], ignore_index=True)
     df.to_csv(USER_FILE, index=False)
 
 def authenticate(email, password):
     df = load_users()
     user = df[(df['email'] == email) & (df['password'] == password)]
-    return not user.empty
+
+    if not user.empty:
+        return True, user.iloc[0]['name']
+    return False, None
 
 def user_exists(email):
     df = load_users()
@@ -433,7 +467,7 @@ def generate_otp():
 
 # ---------------- UI ----------------
 # ---------------- UI ----------------
-st.title("🎬 GNN Movie Recommender")
+st.title("🎬 SSSHRIRAM GNN - Movie Recommender System ")
 
 if "auth" not in st.session_state:
     st.session_state.auth = None
@@ -476,49 +510,53 @@ if menu == "Guest":
 # ---------------- USER SIGNUP ----------------
 elif menu == "User Signup":
     st.header("📝 Signup")
+    name = st.text_input("Full Name")
+    email = st.text_input("Email", key="signup_email")
+    password = st.text_input("Password", type="password", key="signup_password")
+    # INIT SESSION STATE
+    if "signup_otp" not in st.session_state:
+        st.session_state.signup_otp = None
 
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
+    if "temp_user" not in st.session_state:
+        st.session_state.temp_user = None
 
+    # STEP 1: REGISTER → SEND OTP
     if st.button("Register"):
         if user_exists(email):
             st.error("User already exists")
         else:
             otp = generate_otp()
-            st.session_state.otp = otp
-            st.session_state.temp_user = (email, password)
+            st.session_state.signup_otp = otp
+            st.session_state.temp_user = (name, email, password)
 
-            if send_email_otp(email, otp):
+            if send_email_otp(email, otp, name):
                 st.success("OTP sent to your email")
             else:
-                st.error("Failed to send email. Check your credentials.")
+                st.error("Failed to send email")
 
-    otp_input = st.text_input("Enter OTP")
+    # STEP 2: SHOW OTP INPUT ONLY AFTER REGISTER
+    if st.session_state.signup_otp:
+        otp_input = st.text_input("Enter OTP")
 
-    if st.button("Verify OTP"):
-        if otp_input == st.session_state.get("otp"):
-            email, password = st.session_state.temp_user
-            save_user(email, password)
-            st.success("Signup successful")
-        else:
-            st.error("Invalid OTP")
+        if st.button("Verify OTP"):
+            if otp_input == st.session_state.signup_otp:
+                name, email, password = st.session_state.temp_user
+                save_user(name, email, password)
 
+                st.success("Signup successful 🎉")
+
+                # RESET STATE
+                st.session_state.signup_otp = None
+                st.session_state.temp_user = None
+            else:
+                st.error("Invalid OTP")
+
+# ---------------- USER LOGIN ----------------
 # ---------------- USER LOGIN ----------------
 elif menu == "User Login":
     st.header("🔐 Login")
 
-    email = st.text_input("Email")
-    password = st.text_input("Password", type="password")
-
-    if st.button("Login", key="login_btn"):
-        if authenticate(email, password):
-            st.session_state.auth = email
-            st.success("Login successful")
-        else:
-            st.error("Invalid credentials")
-
-    # ---------------- FORGOT PASSWORD FLOW ----------------
-
+    # ---------------- SESSION DEFAULTS ----------------
     if "reset_otp" not in st.session_state:
         st.session_state.reset_otp = None
 
@@ -528,68 +566,109 @@ elif menu == "User Login":
     if "otp_verified" not in st.session_state:
         st.session_state.otp_verified = False
 
-    # STEP 1: SEND OTP
-    if st.button("Forgot Password", key="forgot_btn"):
-        if user_exists(email):
-            otp = generate_otp()
-            st.session_state.reset_otp = otp
-            st.session_state.reset_email = email
+    if "show_graph" not in st.session_state:
+        st.session_state.show_graph = False
 
-            if send_email_otp(email, otp, purpose="reset"):
-                st.success("OTP sent to your email")
+    if "show_focus" not in st.session_state:
+        st.session_state.show_focus = False
+
+    # ---------------- LOGIN FORM ----------------
+    if st.session_state.auth is None:
+
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_password")
+
+        if st.button("Login"):
+            status, name = authenticate(email, password)
+
+            if status:
+                st.session_state.auth = email
+                st.session_state.username = name
+                st.success(f"Welcome {name} 👋")
+                st.rerun()   # 🔥 IMPORTANT FIX
             else:
-                st.error("Email sending failed")
-        else:
-            st.error("Email not found")
+                st.error("Invalid credentials")
 
-    # STEP 2: VERIFY OTP
-    if st.session_state.reset_otp:
-        entered_otp = st.text_input("Enter OTP")
+        # ---------------- FORGOT PASSWORD ----------------
+        if st.button("Forgot Password"):
+            if user_exists(email):
+                otp = generate_otp()
+                st.session_state.reset_otp = otp
+                st.session_state.reset_email = email
 
-        if st.button("Verify OTP", key="verify_btn"):
-            if entered_otp == st.session_state.reset_otp:
-                st.session_state.otp_verified = True
-                st.success("OTP Verified ✅")
-            else:
-                st.error("Invalid OTP")
-
-    # STEP 3: RESET PASSWORD
-    if st.session_state.otp_verified:
-        new_pass = st.text_input("New Password", type="password")
-        confirm_pass = st.text_input("Confirm Password", type="password")
-
-        if st.button("Update Password", key="update_btn"):
-            if new_pass == confirm_pass:
                 df = load_users()
-                df.loc[df['email'] == st.session_state.reset_email, 'password'] = new_pass
-                df.to_csv(USER_FILE, index=False)
+                name = df[df['email'] == email]['name'].values[0]
 
-                st.success("Password updated successfully 🎉")
-
-                # RESET SESSION
-                st.session_state.reset_otp = None
-                st.session_state.otp_verified = False
+                if send_email_otp(email, otp, name, purpose="reset"):
+                    st.success("OTP sent to your email")
+                else:
+                    st.error("Email sending failed")
             else:
-                st.error("Passwords do not match")
+                st.error("Email not found")
 
-    # AFTER LOGIN SHOW USER PAGE
-    if st.session_state.auth is not None:
-        st.header("👤 Create Profile")
+        # STEP 2: VERIFY OTP
+        if st.session_state.reset_otp:
+            entered_otp = st.text_input("Enter OTP")
+
+            if st.button("Verify OTP"):
+                if entered_otp == st.session_state.reset_otp:
+                    st.session_state.otp_verified = True
+                    st.success("OTP Verified ✅")
+                else:
+                    st.error("Invalid OTP")
+
+        # STEP 3: RESET PASSWORD
+        if st.session_state.otp_verified:
+            new_pass = st.text_input("New Password", type="password")
+            confirm_pass = st.text_input("Confirm Password", type="password")
+
+            if st.button("Update Password"):
+                if new_pass == confirm_pass:
+                    df = load_users()
+                    df.loc[df['email'] == st.session_state.reset_email, 'password'] = new_pass
+                    df.to_csv(USER_FILE, index=False)
+
+                    st.success("Password updated successfully 🎉")
+
+                    # RESET SESSION
+                    st.session_state.reset_otp = None
+                    st.session_state.otp_verified = False
+                else:
+                    st.error("Passwords do not match")
+
+    # ---------------- AFTER LOGIN ----------------
+    else:
+        st.success(f"👤 Logged in as: {st.session_state.username}")
+
+        # LOGOUT
+        if st.button("Logout"):
+            st.session_state.auth = None
+            st.session_state.username = None
+            st.session_state.show_graph = False
+            st.session_state.show_focus = False
+            st.rerun()
+
+        st.header("🎯 Get Recommendations")
 
         movie_options = movies[['movieId', 'title']]
 
         selected_movies = st.multiselect(
-            "Select movies",
+            "Select movies you like",
             options=movie_options['movieId'],
             format_func=lambda x: movie_options[movie_options['movieId']==x]['title'].values[0]
         )
 
         ratings_input = []
         for m in selected_movies:
-            r = st.slider(f"Rate {movies[movies['movieId']==m]['title'].values[0]}", 1, 5, 3)
+            r = st.slider(
+                f"Rate {movies[movies['movieId']==m]['title'].values[0]}",
+                1, 5, 3
+            )
             ratings_input.append(r)
 
-        if st.button("Submit Preferences", key="submit_pref"):
+        # ---------------- GENERATE RECOMMENDATIONS ----------------
+        if st.button("Submit Preferences"):
+
             new_user = add_user(selected_movies, ratings_input)
 
             updated = pd.read_csv("ratings.csv")
@@ -616,39 +695,144 @@ elif menu == "User Login":
 
             recs, sim_users = personalized_recommend(new_user, new_model, ei, ew, um)
 
-            st.success(f"User ID: {new_user}")
-            st.write("Similar Users:", sim_users)
-            st.table(recs)
+            # SAVE TO SESSION
+            st.session_state.user_id = new_user
+            st.session_state.sim_users = sim_users
+            st.session_state.recs = recs
 
-            if st.button("🔍 Show My Graph", key="user_graph_btn"):
-                show_graph(new_user, sim_users)
+            st.success(f"🎉 Welcome {st.session_state.username}")
+            st.success(f"Your User ID: {new_user}")
 
-            if st.button("🎯 My Focus Graph", key="user_focus_btn"):
-                show_focus_graph(new_user)
+        # ---------------- SHOW RESULTS (PERSISTENT) ----------------
+        if "recs" in st.session_state and st.session_state.recs is not None:
 
+            st.subheader("👥 Similar Users")
+            st.write(st.session_state.sim_users)
+
+            st.subheader("🎬 Recommendations")
+            st.table(st.session_state.recs)
+
+            col1, col2 = st.columns(2)
+
+            with col1:
+                if st.button("🔍 Show My Graph"):
+                    st.session_state.show_graph = True
+                    st.session_state.show_focus = False
+
+            with col2:
+                if st.button("🎯 My Focus Graph"):
+                    st.session_state.show_focus = True
+                    st.session_state.show_graph = False
+
+        # ---------------- SHOW GRAPHS (FIXED) ----------------
+        if st.session_state.show_graph:
+            st.subheader("🔍 User Similarity Graph")
+            show_graph(
+                st.session_state.user_id,
+                st.session_state.sim_users
+            )
+
+        if st.session_state.show_focus:
+            st.subheader("🎯 Focus Graph")
+            show_focus_graph(
+                st.session_state.user_id
+            )
+# ---------------- ADMIN ----------------
 # ---------------- ADMIN ----------------
 elif menu == "Admin Login":
     st.header("🛠️ Admin Login")
 
-    username = st.text_input("Username")
-    password = st.text_input("Password", type="password")
+    # SESSION DEFAULT
+    if "admin" not in st.session_state:
+        st.session_state.admin = False
 
-    if st.button("Login Admin"):
-        if username == "admin" and password == "admin123":
-            st.session_state.admin = True
-            st.success("Admin Logged In")
-        else:
-            st.error("Wrong credentials")
+    # ---------------- LOGIN FORM ----------------
+    if not st.session_state.admin:
 
-    if st.session_state.get("admin"):
-        st.header("🛠️ Admin Panel")
+        username = st.text_input("Username", key="admin_user")
+        password = st.text_input("Password", type="password", key="admin_pass")
 
+        if st.button("Login Admin"):
+            if username == "SSSHRI2058" and password == "SSSadmin2005":
+                st.session_state.admin = True
+                st.success("Admin Logged In")
+            else:
+                st.error("Wrong credentials")
+
+    # ---------------- AFTER LOGIN ----------------
+    else:
+        st.success("🛠️ Logged in as Admin")
+
+        # ✅ LOGOUT BUTTON
+        if st.button("Logout Admin"):
+            st.session_state.admin = False
+            st.rerun()
+
+        st.header("🛠️ Admin Dashboard")
+
+        # ---------------- FILE UPLOAD ----------------
         uploaded = st.file_uploader("Upload New ratings.csv", type=["csv"])
 
         if uploaded:
             df = pd.read_csv(uploaded)
             df.to_csv("ratings.csv", index=False)
             st.success("Dataset updated")
+        
 
-        st.dataframe(ratings.head())
-    
+        # ---------------- BASIC METRICS ----------------
+        st.subheader("📊 System Overview")
+
+        total_users = ratings['userId'].nunique()
+        total_movies = ratings['movieId'].nunique()
+        total_ratings = len(ratings)
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("👤 Total Users", total_users)
+        col2.metric("🎬 Total Movies", total_movies)
+        col3.metric("⭐ Total Ratings", total_ratings)
+
+        # ---------------- MOST ACTIVE USERS ----------------
+        st.subheader("🔥 Most Active Users")
+
+        user_activity = ratings.groupby('userId').size().reset_index(name='ratings_count')
+        top_users = user_activity.sort_values(by='ratings_count', ascending=False).head(10)
+
+        st.bar_chart(top_users.set_index('userId'))
+
+        # ---------------- TOP MOVIES ----------------
+        st.subheader("🎯 Top Rated Movies")
+
+        movie_stats = ratings.groupby('movieId').agg({
+            'rating': ['mean', 'count']
+        }).reset_index()
+
+        movie_stats.columns = ['movieId', 'avg_rating', 'count']
+
+        # Score = rating * popularity
+        movie_stats['score'] = movie_stats['avg_rating'] * movie_stats['count']
+
+        top_movies = movie_stats.sort_values(by='score', ascending=False).head(10)
+
+        # Merge with movie titles
+        top_movies = top_movies.merge(movies, on='movieId')
+
+        st.bar_chart(top_movies.set_index('title')['score'])
+
+        # ---------------- DATA PREVIEW ----------------
+        st.subheader("📄 Raw Data Preview")
+        st.dataframe(ratings.head())    
+        # ---------------- DOWNLOAD USERS CSV ----------------
+        st.subheader("📥 Download Users Data")
+
+        try:
+            with open("users.csv", "rb") as file:
+                st.download_button(
+                    label="⬇️ Download users.csv",
+                    data=file,
+                    file_name="users.csv",
+                    mime="text/csv"
+                )
+        except FileNotFoundError:
+            st.error("users.csv not found")
+        
